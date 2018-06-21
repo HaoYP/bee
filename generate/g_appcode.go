@@ -319,10 +319,37 @@ func gen(dbms, connStr string, mode byte, selectedTableNames map[string]bool, ap
 		createPaths(mode, mvcPath)
 		pkgPath := getPackagePath(apppath)
 		writeSourceFiles(pkgPath, tables, mode, mvcPath, selectedTableNames)
+		genResFile(apppath)
 	} else {
 		beeLogger.Log.Fatalf("Generating app code from '%s' database is not supported yet.", dbms)
 	}
 }
+
+func genResFile(appPath string) {
+	utils.WriteToFile(path.Join(appPath, "models", "res.go"), res)
+}
+
+var res = `package models
+
+type Res struct {
+	Result StatusCode  ` + "`" + `json:"result"` + "`" + `
+	Data   interface{} ` + "`" + `json:"data"` + "`" + `
+	Msg    string      ` + "`" + `json:"msg"` + "`" + `
+}
+
+func NewRes() Res {
+	return Res{
+		Result: ERROR,
+	}
+}
+
+type StatusCode string
+
+const (
+	SUCCESS  StatusCode = "00"
+	PARAMERR StatusCode = "01" //参数错误,
+	ERROR    StatusCode = "02" //程序异常,
+)`
 
 // GetTableNames returns a slice of table names in the current database
 func (*MysqlDB) GetTableNames(db *sql.DB) (tables []string) {
@@ -1155,7 +1182,6 @@ func Delete{{modelName}}(id int) (err error) {
 import (
 	"{{pkgPath}}/models"
 	"encoding/json"
-	"errors"
 	"strconv"
 	"strings"
 
@@ -1184,18 +1210,20 @@ func (c *{{ctrlName}}Controller) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *{{ctrlName}}Controller) Post() {
+	res := models.NewRes()
 	var v models.{{ctrlName}}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
 		if _, err := models.Add{{ctrlName}}(&v); err == nil {
 			c.Ctx.Output.SetStatus(201)
-			c.Data["json"] = v
+			res.Data = v
+			res.Result = models.SUCCESS
 		} else {
-			c.Data["json"] = err.Error()
+			res.Msg = err.Error()
 		}
 	} else {
-		c.Data["json"] = err.Error()
+		res.Msg = err.Error()
 	}
-	c.ServeJSON()
+	c.Ctx.Output.JSON(res, false, false)
 }
 
 // GetOne ...
@@ -1206,15 +1234,17 @@ func (c *{{ctrlName}}Controller) Post() {
 // @Failure 403 :id is empty
 // @router /:id [get]
 func (c *{{ctrlName}}Controller) GetOne() {
+	res := models.NewRes()
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
 	v, err := models.Get{{ctrlName}}ById(id)
 	if err != nil {
-		c.Data["json"] = err.Error()
+		res.Msg = err.Error()
 	} else {
-		c.Data["json"] = v
+		res.Data = v
+		res.Result = models.SUCCESS
 	}
-	c.ServeJSON()
+	c.Ctx.Output.JSON(res, false, false)
 }
 
 // GetAll ...
@@ -1230,6 +1260,7 @@ func (c *{{ctrlName}}Controller) GetOne() {
 // @Failure 403
 // @router / [get]
 func (c *{{ctrlName}}Controller) GetAll() {
+	res := models.NewRes()
 	var fields []string
 	var sortby []string
 	var order []string
@@ -1262,8 +1293,9 @@ func (c *{{ctrlName}}Controller) GetAll() {
 		for _, cond := range strings.Split(v, ",") {
 			kv := strings.SplitN(cond, ":", 2)
 			if len(kv) != 2 {
-				c.Data["json"] = errors.New("Error: invalid query key/value pair")
-				c.ServeJSON()
+				res.Result = models.PARAMERR
+				res.Msg = "Error: invalid query key/value pair"
+				c.Ctx.Output.JSON(res, false, false)
 				return
 			}
 			k, v := kv[0], kv[1]
@@ -1273,11 +1305,12 @@ func (c *{{ctrlName}}Controller) GetAll() {
 
 	l, err := models.GetAll{{ctrlName}}(query, fields, sortby, order, offset, limit)
 	if err != nil {
-		c.Data["json"] = err.Error()
+		res.Msg = err.Error()
 	} else {
-		c.Data["json"] = l
+		res.Data = l
+		res.Result = models.SUCCESS
 	}
-	c.ServeJSON()
+	c.Ctx.Output.JSON(res, false, false)
 }
 
 // Put ...
@@ -1289,17 +1322,19 @@ func (c *{{ctrlName}}Controller) GetAll() {
 // @Failure 403 :id is not int
 // @router /:id [put]
 func (c *{{ctrlName}}Controller) Put() {
+	res := models.NewRes()
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
 	v := models.{{ctrlName}}{Id: id}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
 		if err := models.Update{{ctrlName}}ById(&v); err == nil {
-			c.Data["json"] = "OK"
+			res.Data = "OK"
+			res.Result = models.SUCCESS
 		} else {
-			c.Data["json"] = err.Error()
+			res.Msg = err.Error()
 		}
 	} else {
-		c.Data["json"] = err.Error()
+		res.Msg = err.Error()
 	}
 	c.ServeJSON()
 }
@@ -1312,14 +1347,16 @@ func (c *{{ctrlName}}Controller) Put() {
 // @Failure 403 id is empty
 // @router /:id [delete]
 func (c *{{ctrlName}}Controller) Delete() {
+	res := models.NewRes()
 	idStr := c.Ctx.Input.Param(":id")
 	id, _ := strconv.Atoi(idStr)
 	if err := models.Delete{{ctrlName}}(id); err == nil {
-		c.Data["json"] = "OK"
+		res.Data = "OK"
+		res.Result = models.SUCCESS
 	} else {
-		c.Data["json"] = err.Error()
+		res.Msg = err.Error()
 	}
-	c.ServeJSON()
+	c.Ctx.Output.JSON(res, false, false)
 }
 `
 	RouterTPL = `// @APIVersion 1.0.0
