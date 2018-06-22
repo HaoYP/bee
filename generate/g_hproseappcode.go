@@ -24,10 +24,10 @@ import (
 	"path"
 	"strings"
 
-	beeLogger "github.com/beego/bee/logger"
-	"github.com/beego/bee/logger/colors"
-	"github.com/beego/bee/utils"
 	_ "github.com/go-sql-driver/mysql"
+	beeLogger "github.com/hongshengjie/bee/logger"
+	"github.com/hongshengjie/bee/logger/colors"
+	"github.com/hongshengjie/bee/utils"
 	_ "github.com/lib/pq"
 )
 

@@ -17,13 +17,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/beego/bee/cmd/commands"
-	"github.com/beego/bee/cmd/commands/version"
-	"github.com/beego/bee/config"
-	"github.com/beego/bee/generate"
-	"github.com/beego/bee/generate/swaggergen"
-	"github.com/beego/bee/logger"
-	"github.com/beego/bee/utils"
+	"github.com/hongshengjie/bee/cmd/commands"
+	"github.com/hongshengjie/bee/cmd/commands/version"
+	"github.com/hongshengjie/bee/config"
+	"github.com/hongshengjie/bee/generate"
+	"github.com/hongshengjie/bee/generate/swaggergen"
+	"github.com/hongshengjie/bee/logger"
+	"github.com/hongshengjie/bee/utils"
 )
 
 var CmdGenerate = &commands.Command{

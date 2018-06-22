@@ -17,13 +17,13 @@ package apiapp
 import (
 	"net/http"
 
-	beeLogger "github.com/beego/bee/logger"
+	beeLogger "github.com/hongshengjie/bee/logger"
 
 	"os"
 
-	"github.com/beego/bee/cmd/commands"
-	"github.com/beego/bee/cmd/commands/version"
-	"github.com/beego/bee/utils"
+	"github.com/hongshengjie/bee/cmd/commands"
+	"github.com/hongshengjie/bee/cmd/commands/version"
+	"github.com/hongshengjie/bee/utils"
 )
 
 var CmdServer = &commands.Command{

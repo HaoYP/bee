@@ -24,11 +24,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/beego/bee/config"
-	beeLogger "github.com/beego/bee/logger"
-	"github.com/beego/bee/logger/colors"
-	"github.com/beego/bee/utils"
 	"github.com/fsnotify/fsnotify"
+	"github.com/hongshengjie/bee/config"
+	beeLogger "github.com/hongshengjie/bee/logger"
+	"github.com/hongshengjie/bee/logger/colors"
+	"github.com/hongshengjie/bee/utils"
 )
 
 var (
