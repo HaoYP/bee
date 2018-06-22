@@ -15,8 +15,10 @@
 package generate
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"html/template"
 	"os"
 	"path"
 	"path/filepath"
@@ -62,6 +64,7 @@ type MvcPath struct {
 	ModelPath      string
 	ControllerPath string
 	RouterPath     string
+	HtmlPath       string
 }
 
 // typeMapping maps SQL data type to corresponding Go data type
@@ -316,6 +319,7 @@ func gen(dbms, connStr string, mode byte, selectedTableNames map[string]bool, ap
 		mvcPath.ModelPath = path.Join(apppath, "models")
 		mvcPath.ControllerPath = path.Join(apppath, "controllers")
 		mvcPath.RouterPath = path.Join(apppath, "routers")
+		mvcPath.HtmlPath = path.Join(apppath, "html")
 		createPaths(mode, mvcPath)
 		pkgPath := getPackagePath(apppath)
 		writeSourceFiles(pkgPath, tables, mode, mvcPath, selectedTableNames)
@@ -750,6 +754,7 @@ func createPaths(mode byte, paths *MvcPath) {
 	if (mode & ORouter) == ORouter {
 		os.Mkdir(paths.RouterPath, 0777)
 	}
+	os.Mkdir(paths.HtmlPath, 0777)
 }
 
 // writeSourceFiles generates source files for model/controller/router
@@ -768,6 +773,69 @@ func writeSourceFiles(pkgPath string, tables []*Table, mode byte, paths *MvcPath
 		beeLogger.Log.Info("Creating router files...")
 		writeRouterFile(tables, paths.RouterPath, selectedTables, pkgPath)
 	}
+	beeLogger.Log.Info("Creating html files...")
+	writeHtmlFiles(tables, paths.HtmlPath, selectedTables)
+}
+
+func writeHtmlFiles(tables []*Table, mPath string, selectedTables map[string]bool) {
+	w := colors.NewColorWriter(os.Stdout)
+
+	for _, tb := range tables {
+		// if selectedTables map is not nil and this table is not selected, ignore it
+		if selectedTables != nil {
+			if _, selected := selectedTables[tb.Name]; !selected {
+				continue
+			}
+		}
+		filename := getFileName(tb.Name)
+		fpath := path.Join(mPath, filename+".html")
+		var f *os.File
+		var err error
+		if utils.IsExist(fpath) {
+			beeLogger.Log.Warnf("'%s' already exists. Do you want to overwrite it? [Yes|No] ", fpath)
+			if utils.AskForConfirmation() {
+				f, err = os.OpenFile(fpath, os.O_RDWR|os.O_TRUNC, 0666)
+				if err != nil {
+					beeLogger.Log.Warnf("%s", err)
+					continue
+				}
+			} else {
+				beeLogger.Log.Warnf("Skipped create file '%s'", fpath)
+				continue
+			}
+		} else {
+			f, err = os.OpenFile(fpath, os.O_CREATE|os.O_RDWR, 0666)
+			if err != nil {
+				beeLogger.Log.Warnf("%s", err)
+				continue
+			}
+		}
+		buf := new(bytes.Buffer)
+
+		tmpl.ExecuteTemplate(buf, "genhtml", tb)
+		content := buf.String()
+		content = strings.Replace(content, "&#34;", `"`, -1)
+
+		if _, err := f.WriteString(content); err != nil {
+			beeLogger.Log.Fatalf("Could not write model file to '%s': %s", fpath, err)
+		}
+		utils.CloseFile(f)
+		fmt.Fprintf(w, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", fpath, "\x1b[0m")
+
+	}
+}
+
+var tmpl = template.Must(template.New("genhtml").Funcs(template.FuncMap{
+	"I18n":   ToI18n,
+	"ToTemp": ToTemp,
+}).Parse(htmlTemplate))
+
+func ToI18n(input string) string {
+	return `{{.i18n.Tr "` + input + `"}}`
+}
+func ToTemp(input string) string {
+	return `{{template "` + input + `" .}}`
+
 }
 
 // writeModelFiles generates model files
@@ -1388,4 +1456,169 @@ func init() {
 			),
 		),
 `
+	htmlTemplate = `<!DOCTYPE html>
+	<html lang="en">
+	
+	<head>
+	   
+		<meta charset="UTF-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta content="width=device-width, initial-scale=1" name="viewport" />
+		<title>{{.Name|I18n}}</title> <!-- 页面标题 -->
+		{{ "publicCSS1"|ToTemp}}
+		<!-- BEGIN PAGE LEVEL PLUGINS -->
+		<link href="/assets/global/plugins/datatables/datatables.min.css" rel="stylesheet" type="text/css" />
+		<link href="/assets/global/plugins/datatables/plugins/bootstrap/datatables.bootstrap.css" rel="stylesheet" type="text/css" />
+		<link href="/assets/global/plugins/bootstrap-select/css/bootstrap-select.css" rel="stylesheet" type="text/css" />
+		<link href="/assets/global/plugins/select2/css/select2.min.css" rel="stylesheet" type="text/css" />
+		<link href="/assets/global/plugins/select2/css/select2-bootstrap.min.css" rel="stylesheet" type="text/css" />
+		<!-- END PAGE LEVEL PLUGINS -->
+		{{ "publicCSS2" |ToTemp}}
+		<link href="/assets/global/css/common.css" rel="stylesheet" type="text/css" />
+	</head>
+	{{"publicHeader" |ToTemp}}
+	
+	<!-- END HEADER -->
+	<!-- BEGIN HEADER & CONTENT DIVIDER -->
+	<div class="clearfix"> </div>
+	<!-- END HEADER & CONTENT DIVIDER -->
+	<!-- BEGIN CONTAINER -->
+	<div class="page-container">
+		<!-- BEGIN SIDEBAR -->
+		
+		<!-- END SIDEBAR -->
+		<!-- BEGIN CONTENT -->
+		<div class="page-content-wrapper">
+			<!-- BEGIN CONTENT BODY -->
+			<div class="page-content">
+				<!-- BEGIN CUSTOMER HTML-->
+				<!-- BEGIN PAGE BAR -->
+				<div class="page-bar">
+					<ul class="page-breadcrumb">
+						
+					</ul>
+				</div>
+				<!-- END PAGE BAR -->
+				<!-- END PAGE HEADER-->
+				<div class="row row--margintop">
+					<div class="col-md-12">
+						<!-- BEGIN EXAMPLE TABLE PORTLET-->
+						<div class="portlet light bordered">
+							<div class="portlet-title">
+								<form class="form-flex form-flex--portlet" id="query_form">
+								
+								</form>
+							</div>
+							<div class="portlet-body">
+								<div class="table-btn">
+							
+								</div>
+								<!-- 表格 START -->
+								<table class="table table-striped table-bordered table-hover" id="table">
+								</table>
+								<!-- 表格 END -->
+							</div>
+						</div>
+						<!-- END EXAMPLE TABLE PORTLET-->
+					</div>
+				</div>
+				<!-- END CUSTOMER HTML-->
+			</div>
+			<!-- END CONTENT BODY -->
+		</div>
+		<!-- END CONTENT -->
+	</div>
+	<!-- BEGIN FOOTER -->
+	{{"publicFooter" |ToTemp}}
+	<!-- END FOOTER -->
+	
+	
+	
+	<!-- 新增弹框 START -->
+	<div id="add_modal" class="modal fade bs-modal-lg" aria-hidden="true">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+					<h4 class="modal-title">{{ "new"|I18n}}</h4>
+				</div>
+				<form id='add_form'>
+					<div class="modal-body form-flex">
+						{{range  $i,$col:= .Columns}} 
+						<div class="form-group form-group--33 ">
+							<label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
+							<input type="text" name="{{$col.Name}}" class="form-control" value="" /> 
+							<span class='input-clear hidden'>×</span>
+						</div> 
+						{{end}}
+					</div>
+					<div class="modal-footer">
+						<button class="btn qing--gradient">{{ "save"|I18n}}</button>
+						<button class="btn default--gradient" data-dismiss="modal">{{ "cancel"|I18n}}</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+	<!-- 新增弹框 END -->
+	
+	<!-- 编辑弹框 START  -->
+	<div id="edit_modal" class="modal fade bs-modal-lg" aria-hidden="true">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+					<h4 class="modal-title">{{ "edit"|I18n}}</h4>
+				</div>
+				<form id='edit_form' class="">
+					<div class="modal-body form-flex">
+					   
+						{{range  $i,$col:= .Columns}} 
+						<div class="form-group form-group--33 ">
+							<label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
+							<input type="text" name="{{$col.Name}}" class="form-control" value="" /> 
+							<span class='input-clear hidden'>×</span>
+						</div>
+						{{end}}
+					   
+					</div>
+					<div class="modal-footer">
+						<button class="btn qing--gradient">{{ "save"|I18n}}</button>
+						<button class="btn default--gradient" data-dismiss="modal">{{ "cancel"|I18n}}</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+	<!-- 编辑弹框 END  -->
+	
+	
+	
+	
+	<!-- 详情弹框 START -->
+	<div id="detail_modal" class="modal fade bs-modal-lg" aria-hidden="true">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+					<h4 class="modal-title">{{ "detail"|I18n}}</h4>
+				</div>
+				<form id='detail_form' class="">
+					<div class="modal-body form-flex">
+						{{range  $i,$col:= .Columns}} 
+						<div class="form-group form-group--33 hidden">
+							<label class="control-label">{{ $col.Name|I18n}}: </label>
+							<input type="text" name="{{$col.Name}}" readonly class="form-control" value="" />
+						</div>
+						{{end}}
+					</div>
+					<div class="modal-footer">
+						<button class="btn default--gradient item__btn" data-dismiss="modal">{{"close"|I18n}}</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+	<!-- 详情弹框 END -->
+	`
 )
