@@ -828,6 +828,7 @@ func writeHtmlFiles(tables []*Table, mPath string, selectedTables map[string]boo
 var tmpl = template.Must(template.New("genhtml").Funcs(template.FuncMap{
 	"I18n":   ToI18n,
 	"ToTemp": ToTemp,
+	"IsCode": IsCode,
 }).Parse(htmlTemplate))
 
 func ToI18n(input string) string {
@@ -835,7 +836,9 @@ func ToI18n(input string) string {
 }
 func ToTemp(input string) string {
 	return `{{template "` + input + `" .}}`
-
+}
+func IsCode(intput string) bool {
+	return strings.HasSuffix(strings.ToLower(intput), "code")
 }
 
 // writeModelFiles generates model files
@@ -1545,11 +1548,22 @@ func init() {
 				<form id='add_form'>
 					<div class="modal-body form-flex">
 						{{range  $i,$col:= .Columns}} 
-						<div class="form-group form-group--33 ">
-							<label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
-							<input type="text" name="{{$col.Name}}" class="form-control" value="" /> 
-							<span class='input-clear hidden'>×</span>
-						</div> 
+							{{if $col.Name|IsCode}}
+							<div class="form-group form-group--33">
+								<label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
+								<select class="select2" name='{{$col.Name}}'> 
+									<option></option>
+								</select>
+							</div>
+						   
+							{{else}}
+							<div class="form-group form-group--33 ">
+								<label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
+								<input type="text" name="{{$col.Name}}" class="form-control" value="" /> 
+								<span class='input-clear hidden'>×</span>
+							</div> 
+						   
+							{{end}}
 						{{end}}
 					</div>
 					<div class="modal-footer">
@@ -1574,11 +1588,21 @@ func init() {
 					<div class="modal-body form-flex">
 					   
 						{{range  $i,$col:= .Columns}} 
-						<div class="form-group form-group--33 ">
-							<label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
-							<input type="text" name="{{$col.Name}}" class="form-control" value="" /> 
-							<span class='input-clear hidden'>×</span>
-						</div>
+							{{if $col.Name|IsCode}}
+						   
+							<div class="form-group form-group--33">
+								<label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
+								<select class="select2" name='{{$col.Name}}'> 
+									<option></option>
+								</select>
+							</div>
+							{{else}}
+							<div class="form-group form-group--33 ">
+								<label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
+								<input type="text" name="{{$col.Name}}" class="form-control" value="" /> 
+								<span class='input-clear hidden'>×</span>
+							</div>
+							{{end}}
 						{{end}}
 					   
 					</div>

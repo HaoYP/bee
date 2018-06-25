@@ -87,11 +87,22 @@
             <form id='add_form'>
                 <div class="modal-body form-flex">
                     {{range  $i,$col:= .Columns}} 
-                    <div class="form-group form-group--33 ">
-                        <label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
-                        <input type="text" name="{{$col.Name}}" class="form-control" value="" /> 
-                        <span class='input-clear hidden'>×</span>
-                    </div> 
+                        {{if $col.Name|IsCode}}
+                        <div class="form-group form-group--33">
+                            <label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
+                            <select class="select2" name='{{$col.Name}}'> 
+                                <option></option>
+                            </select>
+                        </div>
+                       
+                        {{else}}
+                        <div class="form-group form-group--33 ">
+                            <label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
+                            <input type="text" name="{{$col.Name}}" class="form-control" value="" /> 
+                            <span class='input-clear hidden'>×</span>
+                        </div> 
+                       
+                        {{end}}
                     {{end}}
                 </div>
                 <div class="modal-footer">
@@ -116,11 +127,21 @@
                 <div class="modal-body form-flex">
                    
                     {{range  $i,$col:= .Columns}} 
-                    <div class="form-group form-group--33 ">
-                        <label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
-                        <input type="text" name="{{$col.Name}}" class="form-control" value="" /> 
-                        <span class='input-clear hidden'>×</span>
-                    </div>
+                        {{if $col.Name|IsCode}}
+                       
+                        <div class="form-group form-group--33">
+                            <label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
+                            <select class="select2" name='{{$col.Name}}'> 
+                                <option></option>
+                            </select>
+                        </div>
+                        {{else}}
+                        <div class="form-group form-group--33 ">
+                            <label class="control-label"><span class="required">*</span>{{ $col.Name|I18n}}:</label>
+                            <input type="text" name="{{$col.Name}}" class="form-control" value="" /> 
+                            <span class='input-clear hidden'>×</span>
+                        </div>
+                        {{end}}
                     {{end}}
                    
                 </div>
