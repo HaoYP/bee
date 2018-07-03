@@ -1407,7 +1407,7 @@ func (c *{{ctrlName}}Controller) Put() {
 	} else {
 		res.Msg = err.Error()
 	}
-	c.ServeJSON()
+	c.Ctx.Output.JSON(res, false, false)
 }
 
 // Delete ...
